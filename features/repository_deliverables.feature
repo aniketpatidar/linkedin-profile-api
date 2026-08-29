@@ -1,6 +1,7 @@
 # LinkedIn Profile API Repository Deliverables S1
 # LinkedIn Profile API Repository Deliverables S2
 # LinkedIn Profile API Repository Deliverables S3
+# LinkedIn Profile API Repository Deliverables S4
 Feature: LinkedIn Profile API Repository Deliverables
 
   Scenario: LinkedIn Profile API Repository Deliverables S1
@@ -21,3 +22,7 @@ Feature: LinkedIn Profile API Repository Deliverables
   Scenario: LinkedIn Profile API Repository Deliverables S3
     When I inspect the delivered repository
     Then the repository contains no committed credentials
+
+  Scenario: LinkedIn Profile API Repository Deliverables S4
+    When I inspect the delivered repository
+    Then the delivered repository is public on GitHub

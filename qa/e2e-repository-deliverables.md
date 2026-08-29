@@ -35,6 +35,8 @@ Run these checks in a clean clone of the delivered repository.
    grep -qi "LINKEDIN_PASSWORD" README.md
    grep -qi "/profile" README.md
    grep -qi "reverse" README.md
+   grep -qi -E "directly (hits|hits the|reaches)|endpoints (directly|via|through)" README.md
+   grep -qi -E "no browser|without a browser|does not use a browser" README.md
    ```
 
 4. **No credentials are committed anywhere.** Assert that no committed file
@@ -52,13 +54,17 @@ Run these checks in a clean clone of the delivered repository.
    ```
 
 5. **Repository is public and pushable to GitHub.** With
-   `gh repo view --json visibility`, assert `visibility == "public"`.
+   `gh repo view --json visibility`, assert `visibility == "public"`:
+   ```
+   test "$(gh repo view --json visibility -q .visibility)" = "public"
+   ```
 
 ## Pass criteria
 
 - [ ] `README.md` exists at the repository root.
 - [ ] README covers setup, API usage, approach, and known limitations.
 - [ ] README shows credential variable names without concrete values.
+- [ ] README states the solution hits LinkedIn endpoints directly without a browser.
 - [ ] No committed file contains a live credential value or a literal secret
       assignment.
 - [ ] The submitted repository is public on GitHub.

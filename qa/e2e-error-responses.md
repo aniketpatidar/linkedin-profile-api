@@ -11,13 +11,13 @@ Start the server on an ephemeral port for each check; stop it after each.
    `LINKEDIN_PASSWORD` in the environment, then:
    ```
    URL_ENC=$(printf '%s' 'https://www.linkedin.com/in/janedoe' | jq -sRr @uri)
-   curl --silent --output /tmp/qa.json --write-out '%{http_code}' \
+   curl --silent --output ./tmp/qa.json --write-out '%{http_code}' \
      "http://127.0.0.1:8787/profile?url=$URL_ENC"
    ```
    Assert HTTP 503, body has top-level `error` object, `code ==
    "missing_credentials"`, and `message` is non-empty:
    ```
-   jq -e '.error.code == "missing_credentials" and (.error.message | type == "string" and length > 0)' /tmp/qa.json
+   jq -e '.error.code == "missing_credentials" and (.error.message | type == "string" and length > 0)' ./tmp/qa.json
    ```
 
 2. **Profile not available (404).** Configure credentials and request the URL
@@ -33,7 +33,7 @@ Start the server on an ephemeral port for each check; stop it after each.
    assert the body's top-level JSON is exactly an object with one `error` key
    holding `code` and `message`:
    ```
-   jq -e 'has("error") and (.error | has("code") and has("message"))' /tmp/qa.json
+   jq -e 'has("error") and (.error | has("code") and has("message"))' ./tmp/qa.json
    ```
 
 ## Pass criteria

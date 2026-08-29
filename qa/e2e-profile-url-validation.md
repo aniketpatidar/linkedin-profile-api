@@ -14,8 +14,8 @@ Start the server on an ephemeral port before the checks.
    ```
    Assert HTTP 400 and JSON error `code == "invalid_url"`:
    ```
-   curl --silent --output /tmp/qa.json --write-out '%{http_code}' "http://127.0.0.1:8787/profile"
-   jq -e '.error.code == "invalid_url"' /tmp/qa.json
+   curl --silent --output ./tmp/qa.json --write-out '%{http_code}' "http://127.0.0.1:8787/profile"
+   jq -e '.error.code == "invalid_url"' ./tmp/qa.json
    ```
 
 2. **Invalid URLs are rejected (400).** Repeat for each input:
@@ -26,8 +26,8 @@ Start the server on an ephemeral port before the checks.
    For each, assert HTTP 400 and error `code == "invalid_url"`:
    ```
    URL_ENC=$(printf '%s' "$INPUT" | jq -sRr @uri)
-   curl --silent --output /tmp/qa.json --write-out '%{http_code}' "http://127.0.0.1:8787/profile?url=$URL_ENC"
-   jq -e '.error.code == "invalid_url"' /tmp/qa.json
+   curl --silent --output ./tmp/qa.json --write-out '%{http_code}' "http://127.0.0.1:8787/profile?url=$URL_ENC"
+   jq -e '.error.code == "invalid_url"' ./tmp/qa.json
    ```
 
 3. **Valid LinkedIn profile URL forms are accepted.** Repeat for each input
@@ -40,7 +40,7 @@ Start the server on an ephemeral port before the checks.
    For each, assert the response status is 200:
    ```
    URL_ENC=$(printf '%s' "$INPUT" | jq -sRr @uri)
-   curl --silent --output /tmp/qa.json --write-out '%{http_code}' "http://127.0.0.1:8787/profile?url=$URL_ENC"
+   curl --silent --output ./tmp/qa.json --write-out '%{http_code}' "http://127.0.0.1:8787/profile?url=$URL_ENC"
    ```
 
 ## Pass criteria
