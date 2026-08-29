@@ -1,0 +1,69 @@
+#!/usr/bin/env bb
+;; Acceptance entrypoint generator.
+;; Usage: bb bin/acceptance-entrypoint-generator <json-ir> <output-dir>
+;;
+;; Reads the JSON IR produced by gherkin-parser, embeds it into a generated
+;; acceptance test that delegates all step behavior to acceptance.runtime and
+;; acceptance.steps, and writes:
+;;   <output-dir>/generated/<feature>_acceptance.clj
+;;   <output-dir>/metadata/<feature>.meta.json
+;;
+;; Exit codes: 0 success, 1 error, 2 invalid usage.
+(require '[cheshire.core :as json]
+         '[clojure.string :as str])
+
+(defn exit [code msg]
+  (when msg (binding [*out* *err*] (println msg)))
+  (System/exit code))
+
+(defn usage []
+  (exit 2 "Usage: bb bin/acceptance-entrypoint-generator <json-ir> <output-dir>"))
+
+(defn sha256 [s]
+  (let [md (java.security.MessageDigest/getInstance "SHA-256")
+        bytes (.digest md (.getBytes s "UTF-8"))]
+    (apply str (map #(format "%02x" %) bytes))))
+
+(let [[ir-path out-dir] *command-line-args*]
+  (when-not (and ir-path out-dir) (usage))
+  (when-not (.exists (clojure.java.io/file ir-path))
+    (exit 1 (str "IR file not found: " ir-path)))
+  (let [ir (json/parse-string (slurp ir-path))
+        name (get ir "name" "unnamed")
+        feature (or (second (str/split name #" "))
+                    (str/replace (str/trim name) #"\s+" "_"))
+        stem (str/replace (str/lower-case (str/trim name)) #"[^a-z0-9]+" "_")
+        generated-dir (str out-dir "/generated")
+        metadata-dir (str out-dir "/metadata")
+        _ (clojure.java.io/make-parents (str generated-dir "/x.clj"))
+        _ (clojure.java.io/make-parents (str metadata-dir "/x.json"))
+        ir-json (json/generate-string ir)
+        gen-body (str
+                  "#!/usr/bin/env bb\n"
+                  ";; Generated acceptance entry point for: " name "\n"
+                  ";; Delegates all step behavior to acceptance.runtime + acceptance.steps.\n"
+                  "(require '[cheshire.core :as json]\n"
+                  "         '[acceptance.runtime :as runtime]\n"
+                  "         '[acceptance.steps :as steps])\n"
+                  "(def ir (json/parse-string " (pr-str ir-json) "))\n"
+                  "(def results (runtime/run-feature ir steps/registry))\n"
+                  "(def failures (filter #(contains? % :error)\n"
+                  "               (apply concat results)))\n"
+                  "(when (seq failures)\n"
+                  "  (doseq [f failures]\n"
+                  "    (binding [*out* *err*]\n"
+                  "      (println \"FAIL\" (:name (:execution f)) \"-\" (:error f))))\n"
+                  "  (System/exit 1))\n"
+                  "(binding [*out* *err*]\n"
+                  "  (println (str (count (apply concat results)) \" acceptance scenarios passed for \" " (pr-str name) ")))\n")
+        generated-path (str generated-dir "/" stem "_acceptance.clj")
+        hash (sha256 gen-body)
+        meta {:features [{:name name
+                          :entry_point generated-path}]
+              :implementation_hash hash}]
+    (spit generated-path gen-body)
+    (spit (str metadata-dir "/" stem ".meta.json") (json/generate-string meta {:pretty true}))
+    (println (str "generated " generated-path))
+    (println (str "metadata " metadata-dir "/" stem ".meta.json"))
+    (println (str "implementation_hash " hash))
+    (exit 0 nil)))

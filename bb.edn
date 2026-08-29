@@ -1,0 +1,6 @@
+{:paths ["src" "acceptance"]
+ :deps {speclj/speclj {:mvn/version "3.13.0"}
+        http-kit/http-kit {:mvn/version "2.6.0"}}
+ :tasks
+ {test {:doc "Run speclj unit tests"
+        :task (load-file "test/runner.clj")}}}

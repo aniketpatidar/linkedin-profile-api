@@ -1,0 +1,65 @@
+#!/usr/bin/env bb
+;; Normal acceptance run.
+;; Parses every features/*.feature to JSON IR, generates acceptance entry points,
+;; runs them against the real server + repository, and reports pass/fail.
+(require '[cheshire.core :as json]
+         '[clojure.string :as str]
+         '[clojure.java.io :as io])
+
+(def parser (System/getenv "GHERKIN_PARSER"))
+(def generator "./bin/acceptance-entrypoint-generator")
+(def work-root "acceptance")
+
+(defn sh [& args]
+  (let [pb (ProcessBuilder. ^java.util.List (vec args))]
+    (.redirectErrorStream pb true)
+    (let [p (.start pb)
+          out (slurp (.getInputStream p))
+          code (.waitFor p)]
+      {:exit code :out out})))
+
+(defn parse-feature [fin]
+  (let [f (.getPath ^java.io.File fin)
+        stem (str/replace (str/replace f #"^features/" "") #"\.feature$" "")
+        ir-dir (str work-root "/ir")
+        out (sh parser f (str ir-dir "/" stem ".json"))]
+    (when-not (= 0 (:exit out))
+      (binding [*out* *err*] (println (str "gherkin-parser failed for " f ":\n" (:out out))))
+      (System/exit 1))
+    {:stem stem :feature f :ir (str ir-dir "/" stem ".json")}))
+
+(defn generate [{:keys [stem ir]}]
+  (let [out (sh generator ir work-root)]
+    (when-not (= 0 (:exit out))
+      (binding [*out* *err*] (println (str "generator failed for " stem ":\n" (:out out))))
+      (System/exit 1))
+    (let [meta-dir (str work-root "/metadata")
+          meta-files (filter #(str/ends-with? (.getName %) ".meta.json")
+                             (file-seq (io/file meta-dir)))
+          latest (last (sort-by #(.lastModified %) meta-files))
+          entry (get-in (json/parse-string (slurp latest)) ["features" 0 "entry_point"])
+          entry (if (str/starts-with? entry "./") (subs entry 2) entry)]
+      entry)))
+
+(defn run-entry [entry]
+  (let [out (sh "bb" "-cp" "." entry)]
+    {:exit (:exit out) :out (:out out)}))
+
+(io/make-parents (str work-root "/ir/x.json"))
+
+(let [features (sort (filter #(str/ends-with? (.getName %) ".feature")
+                             (filter #(.isFile %)
+                                     (file-seq (io/file "features")))))
+      entries (map (comp generate parse-feature) features)]
+  (loop [entries entries
+         pass 0
+         fail 0]
+    (if-let [entry (first entries)]
+      (let [r (run-entry entry)]
+        (println (:out r))
+        (if (= 0 (:exit r))
+          (recur (rest entries) (inc pass) fail)
+          (recur (rest entries) pass (inc fail))))
+      (do
+        (println (str "\nAcceptance results: " pass " passed, " fail " failed"))
+        (System/exit (if (zero? fail) 0 1))))))
