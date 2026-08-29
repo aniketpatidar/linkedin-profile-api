@@ -8,16 +8,20 @@
             [cheshire.core :as json]
             [clojure.string :as str]))
 
+(defn- decode-pair
+  "Decode a single k=v pair, skipping blank names."
+  [kv]
+  (let [[k v] (str/split kv #"=" 2)]
+    (when (seq k)
+      [(java.net.URLDecoder/decode k "UTF-8")
+       (some-> v (java.net.URLDecoder/decode "UTF-8"))])))
+
 (defn parse-query
   "Parse a query string into a map of (first) param name -> value."
   [qs]
   (when (and qs (seq qs))
     (->> (str/split (if (str/starts-with? qs "?") (subs qs 1) qs) #"&")
-         (keep (fn [kv]
-                 (let [[k v] (str/split kv #"=" 2)]
-                   (when (seq k)
-                     [(java.net.URLDecoder/decode k "UTF-8")
-                      (some-> v (java.net.URLDecoder/decode "UTF-8"))]))))
+         (keep decode-pair)
          (into {}))))
 
 (defn- json-response [status body]
@@ -36,6 +40,36 @@
 
 (defn- default-env [] (into {} (System/getenv)))
 
+(defn- blank-url? [url-value]
+  (or (nil? url-value) (= "" url-value)))
+
+(defn- invalid-url-response []
+  (error-response :invalid_url (get errors/default-message :invalid_url)))
+
+(defn- invalid-url? [url-value]
+  (not (url/valid-profile-url? url-value)))
+
+(defn- missing-credentials-response []
+  (error-response :missing_credentials (get errors/default-message :missing_credentials)))
+
+(defn- handle-session
+  "Fetch the profile once a session cookie is present."
+  [{:keys [fetch-profile]} creds session url-value now]
+  (let [public-id (url/extract-public-id url-value)
+        result (fetch-profile {:public-id public-id
+                               :config (assoc creds :cookie (:cookie session))})]
+    (case (:status result)
+      :ok (ok-response (profile/build-profile (:profile result) url-value (now)))
+      :error (error-response (:code result) (:message result))
+      (error-response :upstream_error "The upstream LinkedIn request failed."))))
+
+(defn- handle-session-result
+  "Respond given the ensure-cookie result."
+  [deps creds session url-value now]
+  (if (= :error (:status session))
+    (error-response :upstream_error "Could not establish a LinkedIn session.")
+    (handle-session deps creds session url-value now)))
+
 (defn- handle-profile
   "Route a /profile request. Uses injected deps for the environmental pieces so
   the routing and error taxonomy are unit-testable."
@@ -43,30 +77,24 @@
     :or {env (default-env)
          now default-now
          ensure-cookie upstream/ensure-cookie
-         fetch-profile upstream/fetch-profile}}
+         fetch-profile upstream/fetch-profile}
+    :as deps}
    query-params]
   (let [url-value (get query-params "url")]
     (cond
-      (or (nil? url-value) (= "" url-value))
-      (error-response :invalid_url (get errors/default-message :invalid_url))
-
-      (not (url/valid-profile-url? url-value))
-      (error-response :invalid_url (get errors/default-message :invalid_url))
-
+      (blank-url? url-value) (invalid-url-response)
+      (invalid-url? url-value) (invalid-url-response)
       :else
       (let [creds (config/credentials env)]
         (if-not (config/credentials-available? creds)
-          (error-response :missing_credentials (get errors/default-message :missing_credentials))
-          (let [session (ensure-cookie creds)]
-            (if (= :error (:status session))
-              (error-response :upstream_error "Could not establish a LinkedIn session.")
-              (let [public-id (url/extract-public-id url-value)
-                    result (fetch-profile {:public-id public-id
-                                           :config (assoc creds :cookie (:cookie session))})]
-                (case (:status result)
-                  :ok (ok-response (profile/build-profile (:profile result) url-value (now)))
-                  :error (error-response (:code result) (:message result))
-                  (error-response :upstream_error "The upstream LinkedIn request failed."))))))))))
+          (missing-credentials-response)
+          (handle-session-result deps creds (ensure-cookie creds) url-value now))))))
+
+(defn- get-route? [method uri path]
+  (and (= :get method) (= path uri)))
+
+(defn- not-found-response []
+  (json-response 404 (errors/error-response :not_found "Not found.")))
 
 (defn handle-request
   "Top-level router. `req` is a ring-style request map with :request-method,
@@ -76,14 +104,14 @@
         uri (or (:uri req) "/")
         query-params (parse-query (:query-string req))]
     (cond
-      (and (= :get method) (= "/health" uri))
+      (get-route? method uri "/health")
       (ok-response {:status "ok"})
 
-      (and (= :get method) (= "/profile" uri))
+      (get-route? method uri "/profile")
       (handle-profile deps query-params)
 
       :else
-      (json-response 404 (errors/error-response :not_found "Not found.")))))
+      (not-found-response))))
 
 (defn start
   "Start the HTTP server on the given port. The handler delegates to

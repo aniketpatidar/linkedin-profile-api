@@ -5,19 +5,24 @@
 (def valid-hosts #{"linkedin.com" "www.linkedin.com"})
 (def public-id-pattern #"^[A-Za-z0-9_-]+$")
 
+(def ^:private url-pattern
+  #"^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/([^/?#]+)([^?#]*)(\?[^#]*)?(#.*)?$")
+
+(defn- url-map
+  "Turn a url regex match into the parsed map."
+  [[_ scheme host path query _anchor]]
+  {:scheme (str/lower-case scheme)
+   :host (str/lower-case host)
+   :path (or path "")
+   :query (or query "")})
+
 (defn parse-url
   "Parse a url string into a map with :scheme, :host, :path, :query, or nil."
   [s]
   (when (and s (string? s))
     (try
-      (let [m (re-matches #"^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/([^/?#]+)([^?#]*)(\?[^#]*)?(#.*)?$" (str/trim s))]
-        (when m
-          (let [[_ scheme host path query _anchor] m
-                path (or path "")]
-            {:scheme (str/lower-case scheme)
-             :host (str/lower-case host)
-             :path path
-             :query (or query "")})))
+      (let [m (re-matches url-pattern (str/trim s))]
+        (when m (url-map m)))
       (catch Exception _ nil))))
 
 (defn profile-path-segments

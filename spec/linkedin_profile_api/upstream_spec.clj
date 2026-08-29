@@ -141,3 +141,40 @@
                                          {:login-fn (fn [_] nil)})]
       (should= :error (:status result))
       (should= :upstream_error (:code result)))))
+
+(describe "linkedin-profile-api.upstream/default-login"
+
+  (defn- fake-login-http
+    "Build injectable http-get/http-post for the login flow. `login-body`
+    arms the GET used on the login page; `cookie-header` arms the POST used on
+    authenticate."
+    [login-body cookie-header]
+    {:http-get (fn [_url _opts] {:status 200 :body login-body})
+     :http-post (fn [_url _opts] {:status 200 :headers {"set-cookie" cookie-header}})})
+
+  (it "logs in and extracts li_at from the authenticate response"
+    (let [{:keys [http-get http-post]} (fake-login-http
+                                         "<form><input type=\"hidden\" name=\"loginCsrfParam\" value=\"t0ken\"></form>"
+                                         "li_at=ses1; Domain=.linkedin.com; Path=/")
+          result (#'upstream/default-login {:email "a@b.c" :password "pw"
+                                             :http-get http-get :http-post http-post})]
+      (should= "ses1" result)))
+  (it "falls back to the alternate loginCsrfParam regex"
+    (let [{:keys [http-get http-post]} (fake-login-http
+                                         "var csrf = { loginCsrfParam: 'alt' };"
+                                         "li_at=ses2; path=/")
+          result (#'upstream/default-login {:email "a@b.c" :password "pw"
+                                             :http-get http-get :http-post http-post})]
+      (should= "ses2" result)))
+  (it "returns nil when the authenticate response carries no set-cookie"
+    (let [{:keys [http-get http-post]} (fake-login-http
+                                         "<form><input name=\"loginCsrfParam\" value=\"t\"></form>"
+                                         nil)
+          result (#'upstream/default-login {:email "a@b.c" :password "pw"
+                                             :http-get http-get :http-post http-post})]
+      (should= nil result)))
+  (it "returns nil when the login page request fails"
+    (let [result (#'upstream/default-login {:email "a@b.c" :password "pw"
+                                             :http-get (fn [_ _] (throw (ex-info "boom" {})))
+                                             :http-post (fn [_ _] {:status 200 :headers {}})})]
+      (should= nil result))))

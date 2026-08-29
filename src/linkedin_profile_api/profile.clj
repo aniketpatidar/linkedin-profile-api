@@ -10,6 +10,23 @@
                   (when v [k v]))))
         keys))
 
+(defn- assoc-when
+  "Assoc k -> v when v is truthy."
+  [m k v]
+  (if v (assoc m k v) m))
+
+(defn- assoc-when-seq
+  "Assoc k -> (map f items) when items is non-empty."
+  [m k items f]
+  (if (seq items)
+    (assoc m k (map f items))
+    m))
+
+(defn- assoc-when-items
+  "Assoc k -> items (as-is) when items is non-empty."
+  [m k items]
+  (if (seq items) (assoc m k items) m))
+
 (defn build-profile
   "Build the structured API profile from normalized raw profile data.
 
@@ -21,15 +38,15 @@
   [{:keys [name headline about location experience education skills
            certifications languages profile-images]}
    url fetched-at]
-  (cond-> {:url url
-           :fetched_at fetched-at}
-    name (assoc :name name)
-    headline (assoc :headline headline)
-    about (assoc :about about)
-    location (assoc :location location)
-    (seq experience) (assoc :experience (map #(item-keys % [:title :company]) experience))
-    (seq education) (assoc :education (map #(item-keys % [:school :degree]) education))
-    (seq skills) (assoc :skills (map #(item-keys % [:name]) skills))
-    (seq certifications) (assoc :certifications (map #(item-keys % [:name :authority]) certifications))
-    (seq languages) (assoc :languages (map #(item-keys % [:name]) languages))
-    (seq profile-images) (assoc :profile_images profile-images)))
+  (-> {:url url
+       :fetched_at fetched-at}
+      (assoc-when :name name)
+      (assoc-when :headline headline)
+      (assoc-when :about about)
+      (assoc-when :location location)
+      (assoc-when-seq :experience experience #(item-keys % [:title :company]))
+      (assoc-when-seq :education education #(item-keys % [:school :degree]))
+      (assoc-when-seq :skills skills #(item-keys % [:name]))
+      (assoc-when-seq :certifications certifications #(item-keys % [:name :authority]))
+      (assoc-when-seq :languages languages #(item-keys % [:name]))
+      (assoc-when-items :profile_images profile-images)))

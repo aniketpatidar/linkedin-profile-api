@@ -34,6 +34,25 @@
         (when (map? v)
           (probe-key (conj [item] v) exts)))))
 
+(defn- present-scalar
+  "Return the trimmed string value when v is a non-blank scalar, else nil."
+  [v]
+  (when (and v (not (coll? v)))
+    (let [t (str/trim (str v))]
+      (when (seq t) t))))
+
+(defn- assoc-scalar
+  "Assoc k -> trimmed v when v is a non-blank scalar."
+  [m k v]
+  (if-let [t (present-scalar v)]
+    (assoc m k t)
+    m))
+
+(defn- assoc-items
+  "Assoc k -> v when v is a non-empty collection."
+  [m k v]
+  (if (seq v) (assoc m k v) m))
+
 (defn extract-name [raw]
   (let [maps (candidates raw)]
     (or (probe-key maps [:name :displayName])
@@ -115,14 +134,14 @@
           certifications (extract-certifications raw)
           languages (extract-languages raw)
           images (extract-profile-images raw)]
-      (cond-> {}
-        (seq (str/trim (str name))) (assoc :name (str/trim (str name)))
-        (seq (str/trim (str headline))) (assoc :headline (str/trim (str headline)))
-        (seq (str/trim (str about))) (assoc :about (str/trim (str about)))
-        (seq (str/trim (str location))) (assoc :location (str/trim (str location)))
-        (seq experience) (assoc :experience experience)
-        (seq education) (assoc :education education)
-        (seq skills) (assoc :skills skills)
-        (seq certifications) (assoc :certifications certifications)
-        (seq languages) (assoc :languages languages)
-        (seq images) (assoc :profile-images images)))))
+      (-> {}
+          (assoc-scalar :name name)
+          (assoc-scalar :headline headline)
+          (assoc-scalar :about about)
+          (assoc-scalar :location location)
+          (assoc-items :experience experience)
+          (assoc-items :education education)
+          (assoc-items :skills skills)
+          (assoc-items :certifications certifications)
+          (assoc-items :languages languages)
+          (assoc-items :profile-images images)))))

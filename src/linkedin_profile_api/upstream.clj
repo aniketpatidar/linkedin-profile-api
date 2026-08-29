@@ -25,17 +25,24 @@
       csrf
       (assoc "csrf-token" csrf))))
 
+(defn- status? [response status]
+  (and (map? response) (= status (:status response))))
+
+(defn- parse-voyager-body
+  "Parse the response body as Voyager JSON, defaulting to {} when absent."
+  [body]
+  (try (decode-json body)
+       (catch Exception _ nil)))
+
 (defn- classify-response
   "Turn an upstream HTTP response (or thrown exception) into a fetch result."
   [response]
   (cond
-    (and (map? response) (= 200 (:status response)))
-    (let [parsed (try (decode-json (:body response))
-                      (catch Exception _ nil))]
-      {:status :ok
-       :profile (voyager/normalize (or parsed {}))})
+    (status? response 200)
+    {:status :ok
+     :profile (voyager/normalize (or (parse-voyager-body (:body response)) {}))}
 
-    (and (map? response) (= 404 (:status response)))
+    (status? response 404)
     {:status :error :code :profile_not_found
      :message "The requested LinkedIn profile was not found or is not viewable with the configured credentials."}
 
@@ -88,6 +95,17 @@
       {:status :error :code :upstream_error
        :message (str "The upstream LinkedIn request failed: " (.getMessage e))})))
 
+(def ^:private li-at-pattern #"(?i)\bli_at=([^;]+)")
+
+(defn- li-at-in-string [s]
+  (when-let [m (re-find li-at-pattern s)]
+    (second m)))
+
+(defn- li-at-in-entry [c]
+  (li-at-in-string (if (map? c)
+                     (str (get c :name) "=" (get c :value))
+                     (str c))))
+
 (defn extract-li-at
   "Extract the li_at session cookie value from a cookie collection. Accepts a
   map (name -> value), a vector of name=value strings, or a single string."
@@ -97,37 +115,44 @@
     (get cookies "li_at")
 
     (coll? cookies)
-    (some (fn [c]
-            (let [c (if (map? c) (str (get c :name) "=" (get c :value)) (str c))]
-              (when-let [m (re-find #"(?i)\bli_at=([^;]+)" c)]
-                (second m))))
-          cookies)
+    (some li-at-in-entry cookies)
 
     (string? cookies)
-    (when-let [m (re-find #"(?i)\bli_at=([^;]+)" cookies)]
-      (second m))))
+    (li-at-in-string cookies)))
 
 (defn- url-encode [s]
   (java.net.URLEncoder/encode (str s) "UTF-8"))
+
+(def ^:private default-http-post
+  (fn [url opts] (http/post url opts)))
+
+(defn- login-page-csrf
+  "Extract the loginCsrfParam value from the login page HTML, or nil."
+  [body]
+  (when-let [m (or (re-find #"name=\"loginCsrfParam\" value=\"([^\"]*)\"" body)
+                   (re-find #"loginCsrfParam[\"']?\s*[:=]\s*[\"']([^\"']*)" body))]
+    (second m)))
 
 (defn- default-login
   "Best-effort programmatic login to LinkedIn to obtain a session cookie using
   email/password credentials. Follows the classic auth flow: load the login
   page, capture the loginCsrfParam, then POST the credentials and read the
-  li_at cookie from the response. Returns a li_at cookie value or nil."
-  [{:keys [email password]}]
+  li_at cookie from the response. Returns a li_at cookie value or nil.
+  Accepts injectable :http-get/:http-post (defaulting to the real babashka
+  clients) so the flow is testable with the remaining real calls excluded."
+  [{:keys [email password http-get http-post]
+    :or {http-get default-http-get
+         http-post default-http-post}}]
   (try
-    (let [login-get (http/get "https://www.linkedin.com/uas/login"
+    (let [login-get (http-get "https://www.linkedin.com/uas/login"
                               {:headers {"User-Agent" "Mozilla/5.0 (compatible; LinkedInProfileAPI/1.0)"}
                                :throw false :timeout 20000})
-          csrf (or (re-find #"name=\"loginCsrfParam\" value=\"([^\"]*)\"" (:body login-get))
-                   (re-find #"loginCsrfParam[\"']?\s*[:=]\s*[\"']([^\"']*)" (:body login-get)))
-          csrf-val (if csrf (second csrf) "")
+          csrf-val (or (login-page-csrf (:body login-get)) "")
           form (str "session_key=" (url-encode email)
                     "&session_password=" (url-encode password)
                     "&loginCsrfParam=" (url-encode csrf-val)
                     "&signin=true")
-          resp (http/post "https://www.linkedin.com/uas/authenticate"
+          resp (http-post "https://www.linkedin.com/uas/authenticate"
                           {:headers {"Content-Type" "application/x-www-form-urlencoded"
                                      "User-Agent" "Mozilla/5.0 (compatible; LinkedInProfileAPI/1.0)"}
                            :throw false :timeout 30000
