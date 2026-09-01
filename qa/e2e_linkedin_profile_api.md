@@ -37,3 +37,8 @@
 ## Execution
 - Use `curl` or any HTTP client to execute these tests against the live endpoint.
 - Do not use internal APIs or code; only interact with the public-facing HTTP interface.
+
+### QA-4: Verify README Documentation
+1. Navigate to the project repository.
+2. Verify that a `README.md` exists in the root.
+3. Check that it contains setup instructions, API documentation, the approach taken, and known limitations.
