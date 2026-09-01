@@ -144,7 +144,7 @@
 
 (def receive-modes #{"task" "batch"})
 (def propagation-modes #{"forward-only" "back-one" "back-all"})
-(def known-agents #{"claude" "codex" "copilot" "grok" "opencode"})
+(def known-agents #{"claude" "codex" "copilot" "grok" "opencode" "antigravity" "agy"})
 
 (defn receive-fields [trailing]
   (let [[receive-mode after-receive]
@@ -512,8 +512,14 @@
                                 (extra-args-prefix row)
                                 (when initial-prompt? prompt))
                   "opencode" (str "opencode " (sq (str role-worktree)) " "
-                                 (str/replace (extra-args-prefix row) #"--yolo" "--auto")
-                                 (when initial-prompt? (str " --prompt " prompt)))
+                                  (str/replace (extra-args-prefix row) #"--yolo" "--auto")
+                                  (when initial-prompt? (str " --prompt " prompt)))
+                  "antigravity" (str "agy "
+                                     (str/replace (extra-args-prefix row) #"--yolo" "--dangerously-skip-permissions")
+                                     (when initial-prompt? (str " --prompt-interactive " prompt)))
+                  "agy" (str "agy "
+                             (str/replace (extra-args-prefix row) #"--yolo" "--dangerously-skip-permissions")
+                             (when initial-prompt? (str " --prompt-interactive " prompt)))
                   "codex" (str "codex -C " (sq (str role-worktree)) " "
                                (no-alt-screen-flag agent row) (yolo-flag agent row)
                                (extra-args-prefix row)
