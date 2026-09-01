@@ -42,3 +42,16 @@
 1. Navigate to the project repository.
 2. Verify that a `README.md` exists in the root.
 3. Check that it contains setup instructions, API documentation, the approach taken, and known limitations.
+
+### QA-5: Verify No Browser Dependency
+1. Review the deployed application or its source code (as appropriate for QA verification of infrastructure).
+2. Ensure no browser automation tools (like Puppeteer, Playwright, or Selenium) are installed or used.
+3. Confirm that the implementation reverse-engineers LinkedIn endpoints directly.
+
+### QA-6: Verify Secrets and Credentials
+1. Review the GitHub repository.
+2. Ensure no LinkedIn credentials, API keys, or `.env` files with secrets are committed to the repository.
+
+### QA-7: Verify GitHub Repository
+1. Ensure the provided GitHub repository is public.
+2. Ensure it contains the complete source code required to deploy the API.
