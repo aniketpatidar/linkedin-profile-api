@@ -1,3 +1,6 @@
 .swarmforge/
 .worktrees/
 tmp/
+acceptance/generated/
+acceptance/ir/
+acceptance/metadata/
