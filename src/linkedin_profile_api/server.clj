@@ -2,7 +2,6 @@
   (:require [linkedin-profile-api.url :as url]
             [linkedin-profile-api.config :as config]
             [linkedin-profile-api.gateway :as gateway]
-            [linkedin-profile-api.cookies :as cookies]
             [linkedin-profile-api.upstream :as upstream]
             [linkedin-profile-api.profile :as profile]
             [linkedin-profile-api.errors :as errors]
@@ -56,7 +55,7 @@
 
 (defn- handle-session
   "Fetch the profile once a session cookie is present."
-  [{:keys [fetch-profile]} creds session url-value now]
+  [fetch-profile creds session url-value now]
   (let [public-id (url/extract-public-id url-value)
         result (fetch-profile {:public-id public-id
                                :config (assoc creds :cookie (gateway/session-cookie session))})]
@@ -72,10 +71,10 @@
 
 (defn- handle-session-result
   "Respond given the ensure-cookie result."
-  [deps creds session url-value now]
+  [fetch-profile creds session url-value now]
   (if (gateway/error? session)
     (error-response :upstream_error "Could not establish a LinkedIn session.")
-    (handle-session deps creds session url-value now)))
+    (handle-session fetch-profile creds session url-value now)))
 
 (defn- handle-profile
   "Route a /profile request. Uses injected deps for the environmental pieces so
@@ -83,9 +82,8 @@
   [{:keys [env now ensure-cookie fetch-profile]
     :or {env (default-env)
          now default-now
-         ensure-cookie cookies/ensure-cookie
-         fetch-profile upstream/fetch-profile}
-    :as deps}
+         ensure-cookie upstream/ensure-cookie
+         fetch-profile upstream/fetch-profile}}
    query-params]
   (let [url-value (get query-params "url")]
     (cond
@@ -95,7 +93,7 @@
       (let [creds (config/credentials env)]
         (if-not (config/credentials-available? creds)
           (missing-credentials-response)
-          (handle-session-result deps creds (ensure-cookie creds) url-value now))))))
+          (handle-session-result fetch-profile creds (ensure-cookie creds) url-value now))))))
 
 (defn- get-route? [method uri path]
   (and (= :get method) (= path uri)))

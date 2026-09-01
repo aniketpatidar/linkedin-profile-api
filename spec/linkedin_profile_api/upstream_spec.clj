@@ -101,3 +101,21 @@
                                      :http-get http})]
       (should= nil (get-in @seen [:opts :headers "csrf-token"]))
       (should= "li_at=abc" (get-in @seen [:opts :headers "Cookie"])))))
+
+(describe "linkedin-profile-api.upstream/ensure-cookie (IO adapter)"
+  (it "returns the configured cookie directly without attempting login"
+    (let [result (upstream/ensure-cookie {:cookie "abc"})]
+      (should= {:cookie "abc"} result)))
+  (it "delegates programmatic login to the pure cookies logic with HTTP bound"
+    (let [http-get (fn [_u _o] {:status 200 :body "<form><input name=\"loginCsrfParam\" value=\"csrf\"/></form>"})
+          http-post (fn [_u _o] {:status 200 :headers {"set-cookie" "li_at=xyz; Path=/"}})
+          result (upstream/ensure-cookie {:email "a@b.com" :password "pw"}
+                                         {:http-get http-get :http-post http-post})]
+      (should= {:cookie "xyz"} result)))
+  (it "returns :upstream_error when login cannot establish a session"
+    (let [http-get (fn [_u _o] {:status 200 :body "no csrf here"})
+          http-post (fn [_u _o] {:status 200 :headers {"set-cookie" "foo=bar"}})
+          result (upstream/ensure-cookie {:email "a@b.com" :password "pw"}
+                                         {:http-get http-get :http-post http-post})]
+      (should= :error (:status result))
+      (should= :upstream_error (:code result)))))

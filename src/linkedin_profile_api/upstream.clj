@@ -74,3 +74,14 @@
     (catch Exception e
       (gateway/error-result :upstream_error
                             (str "The upstream LinkedIn request failed: " (.getMessage e))))))
+
+(defn ensure-cookie
+  "IO adapter for session resolution: binds the real babashka HTTP client into
+  the pure login logic in linkedin-profile-api.cookies and delegates to it.
+  Returns {:cookie <value>} or {:status :error :code :upstream_error ...}."
+  [config & [opts]]
+  (cookies/ensure-cookie
+    config
+    (merge {:http-get (fn [url o] (http/get url o))
+            :http-post (fn [url o] (http/post url o))}
+           opts)))
