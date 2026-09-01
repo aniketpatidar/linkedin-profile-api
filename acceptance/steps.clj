@@ -277,7 +277,7 @@
   [{:keys [world groups]}]
   (let [topic (second groups)
         readme (slurp "README.md")
-        rx (re-pattern (str "(?im)^#+.*" (java.util.regex.Pattern/quote topic)))]
+        rx (re-pattern (str "(?m)^#+.*" (java.util.regex.Pattern/quote topic)))]
     (when-not (re-find rx readme)
       (throw (ex-info (str "README does not document: " topic) {})))
     world))

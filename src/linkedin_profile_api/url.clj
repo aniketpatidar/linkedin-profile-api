@@ -53,3 +53,7 @@
   (let [segments (and s (profile-path-segments s))]
     (when (and segments (= 2 (count segments)))
       (second segments))))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-09-01T16:03:53.235149411+05:30", :module-hash "-1147359255", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line nil, :hash "63035352"} {:id "def/valid-schemes", :kind "def", :line 4, :end-line nil, :hash "781210529"} {:id "def/valid-hosts", :kind "def", :line 5, :end-line nil, :hash "380222084"} {:id "def/public-id-pattern", :kind "def", :line 6, :end-line nil, :hash "-1764611907"} {:id "def/url-pattern", :kind "def", :line 8, :end-line nil, :hash "1315818652"} {:id "defn-/url-map", :kind "defn-", :line 11, :end-line nil, :hash "1476991407"} {:id "defn/parse-url", :kind "defn", :line 19, :end-line nil, :hash "-150301354"} {:id "defn/profile-path-segments", :kind "defn", :line 28, :end-line nil, :hash "1370647180"} {:id "defn/valid-profile-url?", :kind "defn", :line 40, :end-line nil, :hash "-1741021232"} {:id "defn/extract-public-id", :kind "defn", :line 50, :end-line nil, :hash "-723203585"}]}
+;; clj-mutate-manifest-end

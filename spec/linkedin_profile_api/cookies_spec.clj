@@ -47,7 +47,20 @@
     (let [result (cookies/login-with {:email "a@b.c" :password "pw"
                                       :http-get (fn [_ _] (throw (ex-info "boom" {})))
                                       :http-post (fn [_ _] {:status 200 :headers {}})})]
-      (should= nil result))))
+      (should= nil result)))
+  (it "requests the login page without throwing on http errors"
+    (let [get-opts (atom nil)
+          post-opts (atom nil)
+          http-get (fn [_ opts] (reset! get-opts opts)
+                     {:status 200 :body "<form><input name=\"loginCsrfParam\" value=\"t\"></form>"})
+          http-post (fn [_ opts] (reset! post-opts opts)
+                      {:status 200 :headers {"set-cookie" "li_at=x; Path=/"}})]
+      (cookies/login-with {:email "a@b.c" :password "pw"
+                           :http-get http-get :http-post http-post})
+      (should= false (:throw @get-opts))
+      (should= 20000 (:timeout @get-opts))
+      (should= false (:throw @post-opts))
+      (should= 30000 (:timeout @post-opts)))))
 
 (describe "linkedin-profile-api.cookies/login-cookie"
   (it "uses the configured cookie directly when present"
@@ -86,6 +99,13 @@
   (it "returns nil when no JSESSIONID is issued"
     (let [http-get (fn [_ _] {:status 200 :headers {}})]
       (should= nil (cookies/warmup-session http-get))))
+  (it "requests the warmup page without throwing on http errors"
+    (let [opts (atom nil)
+          http-get (fn [_ o] (reset! opts o)
+                     {:status 200 :headers {"Set-Cookie" "JSESSIONID=a; Path=/"}})]
+      (cookies/warmup-session http-get)
+      (should= false (:throw @opts))
+      (should= 15000 (:timeout @opts))))
   (it "returns nil when the warmup request fails"
     (let [http-get (fn [_ _] (throw (ex-info "boom" {})))]
       (should= nil (cookies/warmup-session http-get)))))

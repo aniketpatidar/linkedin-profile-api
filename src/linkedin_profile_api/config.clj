@@ -18,3 +18,7 @@
       (or (and cookie (not (empty? cookie)))
           (and (not (str/blank? (:email creds)))
                (not (str/blank? (:password creds))))))))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-09-01T16:03:50.033606275+05:30", :module-hash "-1262240895", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line nil, :hash "364430109"} {:id "defn/credentials", :kind "defn", :line 4, :end-line nil, :hash "1798150364"} {:id "defn/credentials-available?", :kind "defn", :line 12, :end-line nil, :hash "1726865286"}]}
+;; clj-mutate-manifest-end

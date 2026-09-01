@@ -24,6 +24,18 @@
 (defn req [& {:as r}]
   (merge {:request-method :get :uri "/" :query-string nil} r))
 
+(describe "linkedin-profile-api.server/parse-query"
+  (it "parses a query string with a leading question mark by stripping it"
+    (should= {"a" "1" "b" "2"} (server/parse-query "?a=1&b=2")))
+  (it "parses a query string without a leading question mark"
+    (should= {"a" "1" "b" "2"} (server/parse-query "a=1&b=2")))
+  (it "returns nil for a nil query string"
+    (should= nil (server/parse-query nil)))
+  (it "returns nil for an empty query string"
+    (should= nil (server/parse-query "")))
+  (it "skips blank names while keeping one value per name"
+    (should= {"a" "2"} (server/parse-query "&a=1&a=2"))))
+
 (describe "linkedin-profile-api.server/health"
   (it "returns 200 with status ok"
     (let [r (server/handle-request (ok-deps) (req :uri "/health"))]

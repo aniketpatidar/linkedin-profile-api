@@ -3,8 +3,12 @@
         http-kit/http-kit {:mvn/version "2.6.0"}
         org.clojure/test.check {:mvn/version "1.1.1"}}
  :tasks
- {test {:doc "Run speclj unit tests"
-        :task (load-file "test/runner.clj")}
+{spec {:doc "Run speclj unit tests"
+       :requires ([speclj.main :as speclj])
+       :task (speclj/-main "-c")}
+   test {:doc "Run speclj unit tests"
+         :requires ([speclj.main :as speclj])
+         :task (speclj/-main "-c")}
   property {:doc "Run property tests (separate from unit/acceptance verification)"
             :task (do (load-file "property/runner.clj")
                       ((resolve 'property.runner/load-property-files))

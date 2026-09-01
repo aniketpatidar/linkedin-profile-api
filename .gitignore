@@ -1,6 +1,9 @@
 .swarmforge/
 .worktrees/
 tmp/
+target/mutation-workers/
+target/coverage/
+build/
 acceptance/generated/
 acceptance/ir/
 acceptance/metadata/

@@ -76,6 +76,15 @@
                                      :config {:cookie "abc" :email nil :password nil}
                                      :http-get http})]
       (should= "li_at=abc" (get-in @seen [:opts :headers "Cookie"]))))
+  (it "requests the voyage endpoint without throwing on http errors"
+    (let [seen (atom nil)
+          http (fn [url opts] (reset! seen {:url url :opts opts})
+                            {:status 200 :body "{}"})
+          _ (upstream/fetch-profile {:public-id "janedoe"
+                                     :config {:cookie "abc" :email nil :password nil}
+                                     :http-get http})]
+      (should= false (:throw (:opts @seen)))
+      (should= 20000 (:timeout (:opts @seen)))))
   (it "sends the csrf-token header and JSESSIONID cookie after a warmup"
     (let [seen (atom nil)
           http (fake-http-csrf "ajax:12345"

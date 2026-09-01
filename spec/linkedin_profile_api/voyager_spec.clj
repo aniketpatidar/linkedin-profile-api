@@ -57,6 +57,21 @@
     (let [n (voyager/normalize {:positionView [{:companyName "Acme"
                                                 :title "Senior Engineer"}]})]
       (should= [{:title "Senior Engineer" :company "Acme"}] (:experience n))))
+  (it "reads nested map values inside experience items"
+    (let [n (voyager/normalize {:positionView [{:title {:text "Founder"}
+                                                :company {:name "Acme"}}]})]
+      (should= [{:title "Founder" :company "Acme"}] (:experience n))))
+  (it "reads location from a nested :location map"
+    (let [n (voyager/normalize {:location {:name "San Francisco"}})]
+      (should= "San Francisco" (:location n))))
+  (it "keeps an already-normalized scalar :location"
+    (let [n (voyager/normalize {:location "NY"})]
+      (should= "NY" (:location n))))
+  (it "preserves already-normalized profile images"
+    (let [n (voyager/normalize {:profile_images ["https://media.linkedin.com/a.jpg"
+                                                 "https://media.linkedin.com/b.jpg"]})]
+      (should= ["https://media.linkedin.com/a.jpg" "https://media.linkedin.com/b.jpg"]
+               (:profile_images n))))
   (it "omits sections that are absent"
     (let [n (voyager/normalize {:name "Jane"})]
       (should-not (contains? n :skills))

@@ -109,3 +109,7 @@
       {:cookie cookie}
       (gateway/error-result :upstream_error
                             "Could not establish a LinkedIn session with the configured credentials."))))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-09-01T16:03:50.644127923+05:30", :module-hash "-915452738", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line nil, :hash "242395166"} {:id "defn-/extract-li-at-from-string", :kind "defn-", :line 12, :end-line nil, :hash "-1390882612"} {:id "defn-/li-at-in-entry", :kind "defn-", :line 16, :end-line nil, :hash "-1802261148"} {:id "defn/extract-li-at", :kind "defn", :line 22, :end-line nil, :hash "-1430430595"} {:id "defn-/url-encode", :kind "defn-", :line 36, :end-line nil, :hash "-1257056667"} {:id "defn-/login-page-csrf", :kind "defn-", :line 39, :end-line nil, :hash "721174225"} {:id "defn/login-with", :kind "defn", :line 44, :end-line nil, :hash "62998166"} {:id "defn/login-cookie", :kind "defn", :line 68, :end-line nil, :hash "1375134375"} {:id "defn-/extract-jsessionid", :kind "defn-", :line 79, :end-line nil, :hash "1381775347"} {:id "defn/warmup-session", :kind "defn", :line 85, :end-line nil, :hash "-1949579545"} {:id "defn/ensure-cookie", :kind "defn", :line 102, :end-line nil, :hash "2010194272"}]}
+;; clj-mutate-manifest-end

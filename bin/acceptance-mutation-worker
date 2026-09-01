@@ -1,0 +1,75 @@
+#!/usr/bin/env bb
+;; gherkin-mutator runner worker.
+;; Persistent line protocol worker: reads one JSON request line per job from
+;; stdin ({:id :feature_json :generated_dir :work_dir}), generates the
+;; acceptance entry point for the mutated feature JSON, runs it against the
+;; project root classpath, and emits one JSON response line
+;; ({:id :outcome :output :error :duration}) where :outcome is
+;; "test_failure" (killed), "test_success" (survived), or
+;; "infrastructure_error".
+(require '[cheshire.core :as json]
+         '[clojure.string :as str]
+         '[clojure.java.io :as io])
+
+(def generator "./bin/acceptance-entrypoint-generator")
+
+(defn sh [& args]
+  (let [pb (ProcessBuilder. ^java.util.List (vec args))]
+    (.redirectErrorStream pb true)
+    (let [p (.start pb)
+          out (slurp (.getInputStream p))
+          code (.waitFor p)]
+      {:exit code :out out})))
+
+(defn generate-entry
+  "Generate the acceptance entry point for a feature IR json into
+  <work-dir>/generated and <work-dir>/metadata. Returns the entry point path
+  (relative to the project root) or nil when generation fails."
+  [feature-json work-dir]
+  (let [out-dir (str work-dir "/out")
+        out (sh generator feature-json out-dir)]
+    (when (= 0 (:exit out))
+      (let [meta-dir (str out-dir "/metadata")
+            meta-files (filter #(str/ends-with? (.getName %) ".meta.json")
+                               (file-seq (io/file meta-dir)))
+            latest (last (sort-by #(.lastModified %) meta-files))]
+        (when latest
+          (let [entry (get-in (json/parse-string (slurp latest)) ["features" 0 "entry_point"])]
+            (if (str/starts-with? entry "./") (subs entry 2) entry)))))))
+
+(defn run-entry [entry]
+  (sh "bb" "-cp" "." entry))
+
+(defn handle-line [line]
+  (let [req (json/parse-string line true)
+        id (:id req)
+        feature-json (:feature_json req)
+        work-dir (:work_dir req)
+        started (System/nanoTime)
+        entry (try (generate-entry feature-json work-dir)
+                   (catch Exception e nil))]
+    (cond
+      (nil? entry)
+      {:id id :outcome "infrastructure_error"
+       :error "acceptance entry point generation failed"
+       :output "" :duration (long (/ (- (System/nanoTime) started) 1000000))}
+
+      :else
+      (let [r (run-entry entry)
+            duration (long (/ (- (System/nanoTime) started) 1000000))]
+        {:id id
+         :outcome (if (= 0 (:exit r)) "test_success" "test_failure")
+         :output (:out r)
+         :error (if (= 0 (:exit r)) "" (:out r))
+         :duration duration}))))
+
+(loop [line (read-line)]
+  (when line
+    (let [resp (try (handle-line line)
+                    (catch Exception e
+                      (let [req (try (json/parse-string line true) (catch Exception _ {}))]
+                        {:id (:id req) :outcome "infrastructure_error"
+                         :error (.getMessage e) :output "" :duration 0})))]
+      (println (json/generate-string resp))
+      (flush))
+    (recur (read-line))))

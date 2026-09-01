@@ -85,3 +85,7 @@
     (merge {:http-get (fn [url o] (http/get url o))
             :http-post (fn [url o] (http/post url o))}
            opts)))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-09-01T16:03:52.905716815+05:30", :module-hash "-1673251582", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line nil, :hash "-281177053"} {:id "defn/encode-json", :kind "defn", :line 12, :end-line nil, :hash "-811703144"} {:id "defn/decode-json", :kind "defn", :line 14, :end-line nil, :hash "323789218"} {:id "defn/voyager-profile-url", :kind "defn", :line 16, :end-line nil, :hash "498763535"} {:id "defn-/request-headers", :kind "defn-", :line 19, :end-line nil, :hash "540305641"} {:id "defn-/status?", :kind "defn-", :line 33, :end-line nil, :hash "-561858485"} {:id "defn-/parse-voyager-body", :kind "defn-", :line 36, :end-line nil, :hash "1126226643"} {:id "defn-/classify-response", :kind "defn-", :line 42, :end-line nil, :hash "-324834385"} {:id "defn/fetch-profile", :kind "defn", :line 58, :end-line nil, :hash "-192866336"} {:id "defn/ensure-cookie", :kind "defn", :line 78, :end-line nil, :hash "-209402762"}]}
+;; clj-mutate-manifest-end
