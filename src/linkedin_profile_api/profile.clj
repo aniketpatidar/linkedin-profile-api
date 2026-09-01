@@ -16,10 +16,10 @@
   (if v (assoc m k v) m))
 
 (defn- assoc-when-seq
-  "Assoc k -> (map f items) when items is non-empty."
+  "Assoc k -> (vec (map f items)) when items is non-empty."
   [m k items f]
   (if (seq items)
-    (assoc m k (map f items))
+    (assoc m k (vec (map f items)))
     m))
 
 (defn- assoc-when-items
@@ -36,7 +36,7 @@
   Optional fields are omitted from the result when absent or empty so sparse
   profiles produce a clean response."
   [{:keys [name headline about location experience education skills
-           certifications languages profile-images]}
+           certifications languages profile_images]}
    url fetched-at]
   (-> {:url url
        :fetched_at fetched-at}
@@ -49,4 +49,4 @@
       (assoc-when-seq :skills skills #(item-keys % [:name]))
       (assoc-when-seq :certifications certifications #(item-keys % [:name :authority]))
       (assoc-when-seq :languages languages #(item-keys % [:name]))
-      (assoc-when-items :profile_images profile-images)))
+      (assoc-when-items :profile_images profile_images)))

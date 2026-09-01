@@ -2,6 +2,7 @@
 
 (def status-by-code
   {:invalid_url 400
+   :not_found 404
    :profile_not_found 404
    :missing_credentials 503
    :upstream_error 502})
@@ -9,6 +10,7 @@
 (def default-message
   {:invalid_url "The url is not a valid LinkedIn profile url."
    :missing_credentials "LinkedIn credentials are not configured."
+   :not_found "Not found."
    :profile_not_found "The requested LinkedIn profile was not found."
    :upstream_error "The upstream LinkedIn request failed."})
 

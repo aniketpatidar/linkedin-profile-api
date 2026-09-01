@@ -15,7 +15,7 @@
    :skills [{:name "Clojure"} {:name "Java"}]
    :certifications [{:name "AWS Certified" :authority "Amazon"}]
    :languages [{:name "English"} {:name "Spanish"}]
-   :profile-images ["https://media.licdn.com/foo.jpg"]})
+   :profile_images ["https://media.licdn.com/foo.jpg"]})
 
 (describe "linkedin-profile-api.profile/build-profile"
   (it "echoes the url"
@@ -68,8 +68,8 @@
     (let [p (profile/build-profile (dissoc full-raw :languages) url fetched-at)]
       (should-not (contains? p :languages))))
   (it "omits profile images when absent or empty"
-    (let [p1 (profile/build-profile (dissoc full-raw :profile-images) url fetched-at)
-          p2 (profile/build-profile (assoc full-raw :profile-images []) url fetched-at)]
+    (let [p1 (profile/build-profile (dissoc full-raw :profile_images) url fetched-at)
+          p2 (profile/build-profile (assoc full-raw :profile_images []) url fetched-at)]
       (should-not (contains? p1 :profile_images))
       (should-not (contains? p2 :profile_images))))
   (it "omits empty section arrays"

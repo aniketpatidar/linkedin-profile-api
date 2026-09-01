@@ -1,4 +1,5 @@
-(ns linkedin-profile-api.config)
+(ns linkedin-profile-api.config
+  (:require [clojure.string :as str]))
 
 (defn credentials
   "Read credential values from an environment map. Returns a map with keys
@@ -10,9 +11,10 @@
 
 (defn credentials-available?
   "True when the config carries enough to authenticate against LinkedIn:
-  either a session cookie, or an email/password pair."
+  either a session cookie, or a non-blank email/password pair."
   [creds]
   (let [cookie (:cookie creds)]
     (boolean
       (or (and cookie (not (empty? cookie)))
-          (and (:email creds) (:password creds))))))
+          (and (not (str/blank? (:email creds)))
+               (not (str/blank? (:password creds))))))))

@@ -1,6 +1,8 @@
 (ns linkedin-profile-api.server
   (:require [linkedin-profile-api.url :as url]
             [linkedin-profile-api.config :as config]
+            [linkedin-profile-api.gateway :as gateway]
+            [linkedin-profile-api.cookies :as cookies]
             [linkedin-profile-api.upstream :as upstream]
             [linkedin-profile-api.profile :as profile]
             [linkedin-profile-api.errors :as errors]
@@ -57,16 +59,21 @@
   [{:keys [fetch-profile]} creds session url-value now]
   (let [public-id (url/extract-public-id url-value)
         result (fetch-profile {:public-id public-id
-                               :config (assoc creds :cookie (:cookie session))})]
-    (case (:status result)
-      :ok (ok-response (profile/build-profile (:profile result) url-value (now)))
-      :error (error-response (:code result) (:message result))
+                               :config (assoc creds :cookie (gateway/session-cookie session))})]
+    (cond
+      (gateway/success? result)
+      (ok-response (profile/build-profile (gateway/profile result) url-value (now)))
+
+      (gateway/error? result)
+      (error-response (gateway/code result) (gateway/message result))
+
+      :else
       (error-response :upstream_error "The upstream LinkedIn request failed."))))
 
 (defn- handle-session-result
   "Respond given the ensure-cookie result."
   [deps creds session url-value now]
-  (if (= :error (:status session))
+  (if (gateway/error? session)
     (error-response :upstream_error "Could not establish a LinkedIn session.")
     (handle-session deps creds session url-value now)))
 
@@ -76,7 +83,7 @@
   [{:keys [env now ensure-cookie fetch-profile]
     :or {env (default-env)
          now default-now
-         ensure-cookie upstream/ensure-cookie
+         ensure-cookie cookies/ensure-cookie
          fetch-profile upstream/fetch-profile}
     :as deps}
    query-params]
@@ -94,7 +101,8 @@
   (and (= :get method) (= path uri)))
 
 (defn- not-found-response []
-  (json-response 404 (errors/error-response :not_found "Not found.")))
+  (json-response (errors/status-for-code :not_found)
+                 (errors/error-response :not_found)))
 
 (defn handle-request
   "Top-level router. `req` is a ring-style request map with :request-method,

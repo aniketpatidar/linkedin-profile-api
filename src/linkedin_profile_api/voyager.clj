@@ -67,8 +67,15 @@
   (probe-key (candidates raw) [:summary :about]))
 
 (defn extract-location [raw]
-  (let [maps (conj (candidates raw) (or (:location raw) (:location (:profile raw))))]
-    (probe-key maps [:locationName :locationNameText :name :localizedName])))
+  (let [loc (or (:location raw) (:location (:profile raw)))
+        from-profile (probe-key (candidates raw)
+                                [:locationName :locationNameText :localizedName])
+        from-loc (when (map? loc)
+                   (probe-key [loc] [:name :localizedName]))
+        already-normalized (when (and (contains? raw :location)
+                                      (not (coll? (:location raw))))
+                             (present-scalar (:location raw)))]
+    (or from-profile from-loc already-normalized)))
 
 (defn extract-experience [raw]
   (seq (keep (fn [it]
@@ -111,11 +118,21 @@
                  (when name {:name name})))
              (section (candidates raw) [:languageView :languages :language]))))
 
+(defn- normalized-images
+  "Return the images already normalized under :profile_images/:profile-images
+  as a vector of trimmed strings, so re-normalizing a normalized profile is
+  stable."
+  [raw]
+  (let [v (or (:profile_images raw) (:profile-images raw))]
+    (when (and (coll? v) (seq v))
+      (vec (map (comp str/trim str) v)))))
+
 (defn extract-profile-images [raw]
-  (let [maps (conj (candidates raw) (:profilePicture raw))]
-    (let [url (probe-key maps [:displayPictureUrl :pictureUrl :profilePictureUrl :url])]
-      (when (and url (seq (str/trim url)))
-        [(str/trim url)]))))
+  (let [maps (conj (candidates raw) (:profilePicture raw))
+        url (probe-key maps [:displayPictureUrl :pictureUrl :profilePictureUrl :url])]
+    (or (when (and url (seq (str/trim url)))
+          [(str/trim url)])
+        (normalized-images raw))))
 
 (defn normalize
   "Turn a raw LinkedIn (Voyager) profile response into the normalized raw profile
@@ -144,4 +161,4 @@
           (assoc-items :skills skills)
           (assoc-items :certifications certifications)
           (assoc-items :languages languages)
-          (assoc-items :profile-images images)))))
+          (assoc-items :profile_images images)))))

@@ -204,6 +204,19 @@ Run the unit specs:
 bb test
 ```
 
+Run the property tests (separate from unit/acceptance verification):
+
+```sh
+bb property
+```
+
+Run the lightweight architecture checks (dependency rule, framework leakage,
+import cycles):
+
+```sh
+bb architecture
+```
+
 Run the acceptance suite (parses `features/*.feature`, generates entry points,
 and exercises them against a live server):
 

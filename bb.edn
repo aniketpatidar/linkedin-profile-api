@@ -1,6 +1,13 @@
-{:paths ["src" "acceptance"]
+{:paths ["src" "acceptance" "property"]
  :deps {speclj/speclj {:mvn/version "3.13.0"}
-        http-kit/http-kit {:mvn/version "2.6.0"}}
+        http-kit/http-kit {:mvn/version "2.6.0"}
+        org.clojure/test.check {:mvn/version "1.1.1"}}
  :tasks
  {test {:doc "Run speclj unit tests"
-        :task (load-file "test/runner.clj")}}}
+        :task (load-file "test/runner.clj")}
+  property {:doc "Run property tests (separate from unit/acceptance verification)"
+            :task (do (load-file "property/runner.clj")
+                      ((resolve 'property.runner/load-property-files))
+                      ((resolve 'property.runner/run-all)))}
+  architecture {:doc "Run lightweight architecture checks"
+                :task (load-file "tools/architecture.clj")}}}

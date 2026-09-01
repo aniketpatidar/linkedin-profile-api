@@ -41,7 +41,7 @@
              (:languages (voyager/normalize voyager-profile))))
   (it "extracts profile images from the display picture url"
     (should= ["https://media.licdn.com/foo.jpg"]
-             (:profile-images (voyager/normalize voyager-profile)))))
+             (:profile_images (voyager/normalize voyager-profile)))))
 
 (describe "linkedin-profile-api.voyager/normalize tolerant shapes"
   (it "handles a nested :profile identity object"
