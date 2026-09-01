@@ -7,6 +7,7 @@
             [linkedin-profile-api.gateway :as gateway]
             [linkedin-profile-api.cookies :as cookies]
             [cheshire.core :as json]
+            [clojure.string :as str]
             [babashka.http-client :as http]))
 
 (defn encode-json [x] (json/generate-string x))
@@ -14,7 +15,8 @@
 (defn decode-json [s] (json/parse-string s true))
 
 (defn voyager-profile-url [public-id]
-  (str "https://www.linkedin.com/voyager/api/identity/profiles/" public-id))
+  (str "https://www.linkedin.com/voyager/api/identity/dash/profiles?q=memberIdentity&memberIdentity=" public-id
+       "&decorationId=com.linkedin.voyager.dash.deco.identity.profile.FullProfileWithEntities-93"))
 
 (defn- request-headers
   "Build the request headers for a Voyager call, using the session cookie."
@@ -65,7 +67,9 @@
   [{:keys [public-id config http-get]
     :or {http-get (fn [url opts] (http/get url opts))}}]
   (try
-    (let [csrf (cookies/warmup-session http-get)
+    (let [csrf (or (when-let [j (:jsessionid config)]
+                     (when (not (str/blank? j)) j))
+                   (cookies/warmup-session http-get (:cookie config)))
           headers (request-headers (assoc config :csrf-token csrf))
           url (voyager-profile-url public-id)
           response (http-get url {:headers headers :as :string

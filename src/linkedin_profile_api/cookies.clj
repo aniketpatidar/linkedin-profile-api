@@ -38,7 +38,8 @@
 
 (defn- login-page-csrf [body]
   (when-let [m (or (re-find #"name=\"loginCsrfParam\" value=\"([^\"]*)\"" body)
-                   (re-find #"loginCsrfParam[\"']?\s*[:=]\s*[\"']([^\"']*)" body))]
+                   (re-find #"loginCsrfParam[\"']?\s*[:=]\s*[\"']([^\"']*)" body)
+                   (re-find #"data-csrf=\"([^\"]+)\"" body))]
     (second m)))
 
 (defn login-with
@@ -48,14 +49,16 @@
   nil when the flow could not establish a session."
   [{:keys [email password http-get http-post]}]
   (try
-    (let [login-get (http-get "https://www.linkedin.com/uas/login"
+    (let [login-get (http-get "https://www.linkedin.com/login"
                               {:headers {"User-Agent" "Mozilla/5.0 (compatible; LinkedInProfileAPI/1.0)"}
                                :throw false :timeout 20000})
           csrf-val (or (login-page-csrf (:body login-get)) "")
-          resp (http-post "https://www.linkedin.com/uas/authenticate"
+          resp (http-post "https://www.linkedin.com/checkpoint/lg/login-submit"
                           {:headers {"Content-Type" "application/x-www-form-urlencoded"
-                                     "User-Agent" "Mozilla/5.0 (compatible; LinkedInProfileAPI/1.0)"}
+                                     "User-Agent" "Mozilla/5.0 (compatible; LinkedInProfileAPI/1.0)"
+                                     "Referer" "https://www.linkedin.com/login"}
                            :throw false :timeout 30000
+                           :follow-redirects false
                            :form-params {"session_key" email
                                          "session_password" password
                                          "loginCsrfParam" csrf-val
@@ -85,12 +88,16 @@
 (defn warmup-session
   "Best-effort session warmup: request the LinkedIn homepage to obtain a fresh
   JSESSIONID cookie, which Voyager requires as the csrf-token. The caller
-  supplies the http-get function. Returns a csrf-token value or nil when
-  LinkedIn did not issue one."
-  [http-get]
+  supplies the http-get function and optionally a li_at cookie value so that
+  LinkedIn returns a JSESSIONID bound to the authenticated session.
+  Returns a csrf-token value or nil when LinkedIn did not issue one."
+  [http-get & [li-at]]
   (try
-    (let [resp (http-get "https://www.linkedin.com/"
-                         {:headers {"User-Agent" "Mozilla/5.0 (compatible; LinkedInProfileAPI/1.0)"}
+    (let [headers (cond-> {"User-Agent" "Mozilla/5.0 (compatible; LinkedInProfileAPI/1.0)"}
+                    (and li-at (not (empty? li-at)))
+                    (assoc "Cookie" (str "li_at=" li-at)))
+          resp (http-get "https://www.linkedin.com/"
+                         {:headers headers
                           :throw false :timeout 15000})
           set-cookies (:headers resp)
           jsessionid (or (extract-jsessionid (get set-cookies "Set-Cookie"))
