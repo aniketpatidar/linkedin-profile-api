@@ -514,11 +514,11 @@
                   "opencode" (str "opencode " (sq (str role-worktree)) " "
                                   (str/replace (extra-args-prefix row) #"--yolo" "--auto")
                                   (when initial-prompt? (str " --prompt " prompt)))
-                  "antigravity" (str "agy "
-                                     (str/replace (extra-args-prefix row) #"--yolo" "--dangerously-skip-permissions")
+                  "antigravity" (str "agy --dangerously-skip-permissions "
+                                     (str/replace (extra-args-prefix row) #"--yolo" "")
                                      (when initial-prompt? (str " --prompt-interactive " prompt)))
-                  "agy" (str "agy "
-                             (str/replace (extra-args-prefix row) #"--yolo" "--dangerously-skip-permissions")
+                  "agy" (str "agy --dangerously-skip-permissions "
+                             (str/replace (extra-args-prefix row) #"--yolo" "")
                              (when initial-prompt? (str " --prompt-interactive " prompt)))
                   "codex" (str "codex -C " (sq (str role-worktree)) " "
                                (no-alt-screen-flag agent row) (yolo-flag agent row)
